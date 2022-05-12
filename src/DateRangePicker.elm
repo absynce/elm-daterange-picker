@@ -111,6 +111,7 @@ type alias Config =
     , monthFormatter : Time.Month -> String
     , noRangeCaption : String
     , predefinedRanges : Time.Zone -> Posix -> List ( String, Range )
+    , rangeFormatter : Time.Zone -> Posix -> Range.Range -> String
     , sticky : Bool
     , translations : Translations
     , weekdayFormatter : Time.Weekday -> String
@@ -156,6 +157,7 @@ defaultConfig =
     , monthFormatter = Helpers.monthToString
     , noRangeCaption = "N/A"
     , predefinedRanges = defaultPredefinedRanges
+    , rangeFormatter = defaultRangeFormatter
     , sticky = False
     , translations = defaultTranslations
     , weekdayFormatter = Helpers.weekdayToString
@@ -502,6 +504,11 @@ predefinedRangesView toMsg ({ config, step, today } as internal) =
         ]
 
 
+defaultRangeFormatter : Time.Zone -> Posix -> Range -> String
+defaultRangeFormatter zone _ range =
+    range |> Range.format zone
+
+
 panel : (State -> msg) -> State -> Html msg
 panel toMsg (State internal) =
     let
@@ -572,7 +579,9 @@ panel toMsg (State internal) =
                         text baseCalendar.translations.pickStart
 
                     Step.Complete range ->
-                        range |> Range.format internal.config.zone |> text
+                        range
+                            |> internal.config.rangeFormatter internal.config.zone internal.today
+                            |> text
                 ]
             , div [ class "EDRPFoot__actions" ]
                 [ if not internal.config.sticky then
