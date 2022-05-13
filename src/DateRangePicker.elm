@@ -644,7 +644,7 @@ view toMsg (State internal) =
             , "EDRP__input " ++ internal.config.inputClass |> String.trim |> class
             , HA.disabled internal.disabled
             , internal.current
-                |> Maybe.map (Range.format internal.config.zone)
+                |> Maybe.map (internal.config.rangeFormatter internal.config.zone internal.today)
                 |> Maybe.withDefault internal.config.noRangeCaption
                 |> value
             , onClick <| handleEvent toMsg Open internal
