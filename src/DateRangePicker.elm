@@ -1,7 +1,7 @@
 module DateRangePicker exposing
     ( Config, defaultConfig, configure, reconfigure
     , Translations
-    , State, init, now, nowTask, getRange, setRange, setToday, disable, isDisabled, open, isOpened
+    , State, init, now, nowTask, getRange, setRange, getToday, setToday, disable, isDisabled, open, isOpened
     , view
     , subscriptions
     )
@@ -59,7 +59,7 @@ module DateRangePicker exposing
 
 # State
 
-@docs State, init, now, nowTask, getRange, setRange, setToday, disable, isDisabled, open, isOpened
+@docs State, init, now, nowTask, getRange, setRange, getToday, setToday, disable, isDisabled, open, isOpened
 
 
 # View
@@ -275,6 +275,13 @@ getRange (State { current }) =
 setRange : Maybe Range -> State -> State
 setRange dateRange (State internal) =
     State { internal | current = dateRange, step = Step.fromMaybe dateRange }
+
+
+{-| Get the current "day" (`Posix`).
+-}
+getToday : State -> Posix
+getToday (State { today }) =
+    today
 
 
 {-| Positions a date range picker [`State`](#State) to current date.
