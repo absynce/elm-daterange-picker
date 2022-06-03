@@ -89,7 +89,13 @@ dayCell { allowFuture, allowedToPickDay, hover, hovered, noOp, pick, step, targe
             , end = False
             , inRange = False
             , inPath = False
-            , exceedsMax = False
+            , exceedsMax =
+                not
+                    (allowedToPickDay zone
+                        { dayToPick = day
+                        , begin = Nothing
+                        }
+                    )
             }
 
         { active, start, end, inRange, inPath, exceedsMax } =
