@@ -2,12 +2,14 @@ module Main exposing (main)
 
 import Browser
 import DateRangePicker as Picker
+import DateRangePicker.Helpers as Helpers
 import DateRangePicker.Range as Range exposing (Range)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Encode as Encode
 import Time
+import Time.Extra
 
 
 type alias Model =
@@ -27,12 +29,186 @@ init _ =
         (Picker.configure
             (\default ->
                 { default
-                    | allowFuture = False
+                    | allowFuture = True
+                    , allowedToPickDay = allowedToPickDay
                     , noRangeCaption = "Click me!"
+                    , dayFormatter = dayFormatter
+                    , rangeFormatter = rangeFormatter
+                    , sticky = True
+                    , predefinedRanges = predefinedRanges
                 }
             )
         )
         Nothing
+
+
+allowedToPickDay : Time.Zone -> { dayToPick : Time.Posix, begin : Maybe Time.Posix } -> Bool
+allowedToPickDay zone { begin, dayToPick } =
+    let
+        onWeekend =
+            case dayToPick |> Time.toWeekday zone of
+                Time.Sat ->
+                    True
+
+                Time.Sun ->
+                    True
+
+                _ ->
+                    False
+    in
+    case begin of
+        Nothing ->
+            not onWeekend
+
+        Just beginAt ->
+            not onWeekend
+                && (Range.create zone beginAt (Time.Extra.setYear zone (Time.toYear zone beginAt + 1) beginAt)
+                        |> Range.between dayToPick
+                   )
+
+
+predefinedRanges : Time.Zone -> Time.Posix -> List ( String, Range )
+predefinedRanges zone today =
+    let
+        daysBefore n posix =
+            posix |> Time.Extra.addDays -n |> Time.Extra.startOfDay zone
+    in
+    [ ( "Today"
+      , Range.create zone (Time.Extra.startOfDay zone today) (Time.Extra.endOfDay zone today)
+      )
+    , ( "Yesterday"
+      , Range.create zone (today |> daysBefore 1 |> Time.Extra.startOfDay zone) (today |> daysBefore 1 |> Time.Extra.endOfDay zone)
+      )
+    , ( "Last 7 days"
+      , Range.create zone (today |> daysBefore 7) (today |> Time.Extra.startOfDay zone |> Time.Extra.addMillis -1)
+      )
+    , ( "Last 30 days"
+      , Range.create zone (today |> daysBefore 30) (today |> Time.Extra.startOfDay zone |> Time.Extra.addMillis -1)
+      )
+    , ( "This month"
+      , Range.create zone (today |> Time.Extra.startOfMonth zone) today
+      )
+    , ( "Last month"
+      , Range.create zone (today |> Helpers.startOfPreviousMonth zone) (today |> Time.Extra.startOfMonth zone |> Time.Extra.addMillis -1)
+      )
+    ]
+
+
+dayFormatter :
+    Time.Zone
+    ->
+        { day : Time.Posix
+        , today : Time.Posix
+        }
+    -> Html Never
+dayFormatter zone { day, today } =
+    let
+        greaterThanToday =
+            Time.Extra.compare day today
+
+        daysBetween =
+            Range.days (Range.create zone day today)
+
+        beforeOrAfterToday =
+            case ( daysBetween, greaterThanToday ) of
+                ( 0, _ ) ->
+                    ""
+
+                ( _, EQ ) ->
+                    ""
+
+                ( _, GT ) ->
+                    "+"
+
+                ( _, LT ) ->
+                    "-"
+    in
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "row-gap" "0.1em"
+        ]
+        [ div
+            [ style "font-weight" "bold"
+            ]
+            [ day |> Time.toDay zone |> String.fromInt |> text
+            ]
+        , div
+            [ style "color" "#888"
+            , style "font-size" "0.7em"
+            , style "flex-direction" "column"
+            ]
+            [ beforeOrAfterToday
+                ++ (case daysBetween of
+                        0 ->
+                            daysBetween |> String.fromInt
+
+                        _ ->
+                            (daysBetween |> String.fromInt)
+                                ++ "d"
+                   )
+                |> text
+            ]
+        ]
+
+
+rangeFormatter : Time.Zone -> Time.Posix -> Range -> String
+rangeFormatter zone today range =
+    let
+        begin =
+            Range.beginsAt range
+
+        end =
+            Range.endsAt range
+    in
+    if
+        Helpers.sameDay zone
+            begin
+            end
+            && Time.Extra.toIso8601Date
+                zone
+                today
+            == Time.Extra.toIso8601Date zone end
+    then
+        "today"
+
+    else if Helpers.sameDay zone begin end then
+        relativeTime zone today begin
+
+    else
+        "from "
+            ++ relativeTime zone today begin
+            ++ " to "
+            ++ relativeTime zone today end
+
+
+relativeTime : Time.Zone -> Time.Posix -> Time.Posix -> String
+relativeTime zone today end =
+    let
+        endGreaterThanToday =
+            Time.Extra.compare end today
+
+        endDaysBetween =
+            Range.days (Range.create zone end today)
+    in
+    case ( endDaysBetween, endGreaterThanToday ) of
+        ( 0, _ ) ->
+            "today"
+
+        ( _, EQ ) ->
+            "today"
+
+        ( 1, GT ) ->
+            String.fromInt endDaysBetween ++ " day from now"
+
+        ( 1, LT ) ->
+            String.fromInt endDaysBetween ++ " day ago"
+
+        ( _, GT ) ->
+            String.fromInt endDaysBetween ++ " days from now"
+
+        ( _, LT ) ->
+            String.fromInt endDaysBetween ++ " days ago"
 
 
 initFromConfig : Picker.Config -> Maybe Range -> ( Model, Cmd Msg )

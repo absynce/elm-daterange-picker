@@ -28,7 +28,8 @@ $grey: rgb(155, 155, 155);
 
         &--sticky {
           position: relative;
-          width: 670px;
+          // width: 700px;
+          width: fit-content;
         }
     }
 
@@ -104,10 +105,10 @@ $grey: rgb(155, 155, 155);
 
         &__cell {
             padding: 7px 9px;
+            // padding: 7px 6px 7px 3px;
             cursor: pointer;
             border-radius: 3px;
-            font-weight: bold;
-            font-size: 0.9em;
+            font-size: 1em;
             user-select: none;
 
             &:hover {
