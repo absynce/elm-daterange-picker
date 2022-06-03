@@ -90,6 +90,7 @@ import Time.Extra as TE
 {-| DateRangePicker configuration:
 
   - `allowFuture`: Allow picking a range in the future
+  - `allowedToPickDay`: Decide whether to allow to pick day.
   - `applyRangeImmediately`: Apply predefined range immediately when clicked
   - `class`: CSS class name(s) to add to the component root element.
   - `inputClass`: CSS class name(s) to add to the component text input.
@@ -105,6 +106,7 @@ import Time.Extra as TE
 -}
 type alias Config =
     { allowFuture : Bool
+    , allowedToPickDay : Time.Zone -> { dayToPick : Posix, begin : Maybe Posix } -> Bool
     , applyRangeImmediately : Bool
     , class : String
     , inputClass : String
@@ -150,6 +152,7 @@ type alias Translations =
 defaultConfig : Config
 defaultConfig =
     { allowFuture = True
+    , allowedToPickDay = \_ _ -> True
     , applyRangeImmediately = True
     , class = ""
     , inputClass = ""
@@ -507,6 +510,7 @@ panel toMsg (State internal) =
     let
         baseCalendar =
             { allowFuture = internal.config.allowFuture
+            , allowedToPickDay = internal.config.allowedToPickDay
             , hover = \posix -> handleEvent toMsg (Hover posix) internal
             , hovered = internal.hovered
             , monthFormatter = internal.config.monthFormatter

@@ -1,7 +1,7 @@
 module DateRangePicker.Calendar exposing (Translations, fromPosix, view, weekdayNames)
 
 import DateRangePicker.Helpers as Helpers exposing (sameDay)
-import DateRangePicker.Range as Range
+import DateRangePicker.Range as Range exposing (Range)
 import DateRangePicker.Step as Step exposing (Step)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -22,6 +22,7 @@ type alias Translations =
 
 type alias Config msg =
     { allowFuture : Bool
+    , allowedToPickDay : Time.Zone -> { dayToPick : Posix, begin : Maybe Posix } -> Bool
     , monthFormatter : Time.Month -> String
     , hover : Posix -> msg
     , hovered : Maybe Posix
@@ -80,7 +81,7 @@ inRangePath zone maybeHovered begin day =
 
 
 dayCell : Config msg -> Posix -> Html msg
-dayCell { allowFuture, hover, hovered, noOp, pick, step, target, today, zone } day =
+dayCell { allowFuture, allowedToPickDay, hover, hovered, noOp, pick, step, target, today, zone } day =
     let
         base =
             { active = False
@@ -88,9 +89,10 @@ dayCell { allowFuture, hover, hovered, noOp, pick, step, target, today, zone } d
             , end = False
             , inRange = False
             , inPath = False
+            , exceedsMax = False
             }
 
-        { active, start, end, inRange, inPath } =
+        { active, start, end, inRange, inPath, exceedsMax } =
             case step of
                 Step.Initial ->
                     base
@@ -100,6 +102,13 @@ dayCell { allowFuture, hover, hovered, noOp, pick, step, target, today, zone } d
                         | active = sameDay zone begin day
                         , start = sameDay zone begin day
                         , inPath = inRangePath zone hovered begin day
+                        , exceedsMax =
+                            not
+                                (allowedToPickDay zone
+                                    { dayToPick = day
+                                    , begin = Just begin
+                                    }
+                                )
                     }
 
                 Step.Complete range ->
@@ -111,7 +120,8 @@ dayCell { allowFuture, hover, hovered, noOp, pick, step, target, today, zone } d
                     }
 
         disabled =
-            not allowFuture && Time.posixToMillis day > Time.posixToMillis today
+            exceedsMax
+                || (not allowFuture && Time.posixToMillis day > Time.posixToMillis today)
     in
     td
         ([ classList
